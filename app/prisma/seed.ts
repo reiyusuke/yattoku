@@ -50,7 +50,7 @@ async function main() {
 
   const sampleEvent = await prisma.event.upsert({
     where: {
-      id: 1n,
+      id: BigInt(1),
     },
     update: {
       title: "ヤットク交流イベント",
@@ -62,7 +62,7 @@ async function main() {
       createdBy: adminUser.id,
     },
     create: {
-      id: 1n,
+      id: BigInt(1),
       title: "ヤットク交流イベント",
       description: "ヤットクMVP確認用のサンプルイベントです。",
       eventDate: new Date("2026-04-20T18:00:00+09:00"),
