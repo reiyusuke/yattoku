@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type EventItem = {
   id: string;
@@ -34,64 +35,84 @@ function formatDate(dateString: string) {
   }).format(date);
 }
 
-function applicationLabel(applicationStatus: string) {
-  if (applicationStatus === "open") {
+function applicationLabel(status: string) {
+  if (status === "open") {
     return "募集中";
   }
 
-  if (applicationStatus === "closed") {
+  if (status === "closed") {
     return "募集終了";
   }
 
-  return applicationStatus;
+  return status;
 }
 
 export default function EventsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const initialQuery = searchParams.get("q") ?? "";
+
+  const [query, setQuery] = useState(initialQuery);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
+
+  async function loadEvents(currentQuery: string) {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const params = new URLSearchParams();
+      if (currentQuery.trim()) {
+        params.set("q", currentQuery.trim());
+      }
+
+      const url = params.toString()
+        ? `/api/events?${params.toString()}`
+        : "/api/events";
+
+      const response = await fetch(url, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const data = (await response.json()) as EventsResponse;
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error ?? "failed_to_fetch_events");
+      }
+
+      setEvents(data.events ?? []);
+    } catch (fetchError) {
+      console.error(fetchError);
+      setError("イベント一覧の取得に失敗しました。");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let isMounted = true;
+    loadEvents(initialQuery);
+  }, [initialQuery]);
 
-    async function loadEvents() {
-      try {
-        setIsLoading(true);
-        setError("");
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-        const response = await fetch("/api/events", {
-          method: "GET",
-          cache: "no-store",
-        });
+    const trimmed = query.trim();
 
-        const data = (await response.json()) as EventsResponse;
-
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error ?? "failed_to_fetch_events");
-        }
-
-        if (isMounted) {
-          setEvents(data.events ?? []);
-        }
-      } catch (fetchError) {
-        console.error(fetchError);
-
-        if (isMounted) {
-          setError("イベント一覧の取得に失敗しました。");
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+    if (trimmed) {
+      router.push(`/events?q=${encodeURIComponent(trimmed)}`);
+      return;
     }
 
-    loadEvents();
+    router.push("/events");
+  }
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  function handleClear() {
+    setQuery("");
+    router.push("/events");
+  }
 
   const content = useMemo(() => {
     if (isLoading) {
@@ -114,7 +135,7 @@ export default function EventsPage() {
       return (
         <div className="rounded-2xl border border-neutral-200 bg-white p-6">
           <p className="text-sm text-neutral-600">
-            現在表示できるイベントはありません。
+            条件に一致するイベントがありません。
           </p>
         </div>
       );
@@ -127,40 +148,55 @@ export default function EventsPage() {
             key={event.id}
             className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
           >
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold text-neutral-900">
-                    {event.title}
-                  </h2>
-                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
-                    {applicationLabel(event.applicationStatus)}
-                  </span>
-                </div>
-
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-neutral-600">
-                  {event.description}
-                </p>
-
-                <dl className="mt-4 grid gap-2 text-sm text-neutral-700">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:gap-3">
-                    <dt className="min-w-16 font-medium text-neutral-500">日時</dt>
-                    <dd>{formatDate(event.eventDate)}</dd>
-                  </div>
-
-                  <div className="flex flex-col gap-1 sm:flex-row sm:gap-3">
-                    <dt className="min-w-16 font-medium text-neutral-500">場所</dt>
-                    <dd>{event.place}</dd>
-                  </div>
-                </dl>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold text-neutral-900">
+                  {event.title}
+                </h2>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    event.applicationStatus === "open"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-neutral-200 text-neutral-700"
+                  }`}
+                >
+                  {applicationLabel(event.applicationStatus)}
+                </span>
               </div>
 
-              <div className="flex shrink-0">
+              <p className="text-sm leading-6 text-neutral-600">
+                {event.description}
+              </p>
+
+              <dl className="grid gap-3 rounded-2xl bg-neutral-50 p-4 md:grid-cols-2">
+                <div>
+                  <dt className="text-sm font-medium text-neutral-500">日時</dt>
+                  <dd className="mt-1 text-sm font-medium text-neutral-900">
+                    {formatDate(event.eventDate)}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-sm font-medium text-neutral-500">場所</dt>
+                  <dd className="mt-1 text-sm font-medium text-neutral-900">
+                    {event.place}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="flex flex-wrap gap-3">
                 <Link
                   href={`/events/${event.id}`}
                   className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
                 >
                   詳細を見る
+                </Link>
+
+                <Link
+                  href={`/events/${event.id}/apply`}
+                  className="inline-flex items-center justify-center rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-neutral-50"
+                >
+                  参加する
                 </Link>
               </div>
             </div>
@@ -191,6 +227,35 @@ export default function EventsPage() {
             </p>
           </div>
         </div>
+
+        <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+          <form className="flex flex-col gap-3 md:flex-row" onSubmit={handleSearch}>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="タイトル・説明・場所で検索"
+              className="flex-1 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-900"
+            />
+
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-neutral-800"
+              >
+                検索
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClear}
+                className="inline-flex items-center justify-center rounded-xl border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-900 transition hover:bg-neutral-50"
+              >
+                クリア
+              </button>
+            </div>
+          </form>
+        </section>
 
         {content}
       </section>

@@ -1,16 +1,40 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const q = searchParams.get("q")?.trim() ?? "";
+
     const events = await prisma.event.findMany({
       where: {
         publishStatus: "published",
+        ...(q.length > 0
+          ? {
+              OR: [
+                {
+                  title: {
+                    contains: q,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  description: {
+                    contains: q,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  place: {
+                    contains: q,
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            }
+          : {}),
       },
-      orderBy: [
-        { eventDate: "asc" },
-        { id: "asc" },
-      ],
+      orderBy: [{ eventDate: "asc" }, { id: "asc" }],
     });
 
     return NextResponse.json({
