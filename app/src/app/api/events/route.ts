@@ -6,6 +6,12 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const q = searchParams.get("q")?.trim() ?? "";
     const onlyOpen = searchParams.get("onlyOpen") === "1";
+    const sort = searchParams.get("sort")?.trim() ?? "eventDateAsc";
+
+    const orderBy =
+      sort === "createdAtDesc"
+        ? [{ createdAt: "desc" as const }, { id: "desc" as const }]
+        : [{ eventDate: "asc" as const }, { id: "asc" as const }];
 
     const events = await prisma.event.findMany({
       where: {
@@ -40,7 +46,7 @@ export async function GET(request: NextRequest) {
             }
           : {}),
       },
-      orderBy: [{ eventDate: "asc" }, { id: "asc" }],
+      orderBy,
     });
 
     return NextResponse.json({

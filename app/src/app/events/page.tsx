@@ -53,14 +53,20 @@ export default function EventsPage() {
 
   const initialQuery = searchParams.get("q") ?? "";
   const initialOnlyOpen = searchParams.get("onlyOpen") === "1";
+  const initialSort = searchParams.get("sort") ?? "eventDateAsc";
 
   const [query, setQuery] = useState(initialQuery);
   const [onlyOpen, setOnlyOpen] = useState(initialOnlyOpen);
+  const [sort, setSort] = useState(initialSort);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadEvents(currentQuery: string, currentOnlyOpen: boolean) {
+  async function loadEvents(
+    currentQuery: string,
+    currentOnlyOpen: boolean,
+    currentSort: string
+  ) {
     try {
       setIsLoading(true);
       setError("");
@@ -73,6 +79,10 @@ export default function EventsPage() {
 
       if (currentOnlyOpen) {
         params.set("onlyOpen", "1");
+      }
+
+      if (currentSort && currentSort !== "eventDateAsc") {
+        params.set("sort", currentSort);
       }
 
       const url = params.toString()
@@ -100,8 +110,8 @@ export default function EventsPage() {
   }
 
   useEffect(() => {
-    loadEvents(initialQuery, initialOnlyOpen);
-  }, [initialOnlyOpen, initialQuery]);
+    loadEvents(initialQuery, initialOnlyOpen, initialSort);
+  }, [initialOnlyOpen, initialQuery, initialSort]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,6 +126,10 @@ export default function EventsPage() {
       params.set("onlyOpen", "1");
     }
 
+    if (sort && sort !== "eventDateAsc") {
+      params.set("sort", sort);
+    }
+
     const queryString = params.toString();
     router.push(queryString ? `/events?${queryString}` : "/events");
   }
@@ -123,6 +137,7 @@ export default function EventsPage() {
   function handleClear() {
     setQuery("");
     setOnlyOpen(false);
+    setSort("eventDateAsc");
     router.push("/events");
   }
 
@@ -250,15 +265,35 @@ export default function EventsPage() {
               className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-900"
             />
 
-            <label className="inline-flex items-center gap-3 text-sm text-neutral-700">
-              <input
-                type="checkbox"
-                checked={onlyOpen}
-                onChange={(e) => setOnlyOpen(e.target.checked)}
-                className="h-4 w-4 rounded border-neutral-300"
-              />
-              募集中のイベントのみ表示する
-            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="inline-flex items-center gap-3 text-sm text-neutral-700">
+                <input
+                  type="checkbox"
+                  checked={onlyOpen}
+                  onChange={(e) => setOnlyOpen(e.target.checked)}
+                  className="h-4 w-4 rounded border-neutral-300"
+                />
+                募集中のイベントのみ表示する
+              </label>
+
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="sort"
+                  className="text-sm font-medium text-neutral-700"
+                >
+                  並び順
+                </label>
+                <select
+                  id="sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-900"
+                >
+                  <option value="eventDateAsc">開催日が近い順</option>
+                  <option value="createdAtDesc">新しい順</option>
+                </select>
+              </div>
+            </div>
 
             <div className="flex gap-3">
               <button
