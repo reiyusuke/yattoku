@@ -5,10 +5,16 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const q = searchParams.get("q")?.trim() ?? "";
+    const onlyOpen = searchParams.get("onlyOpen") === "1";
 
     const events = await prisma.event.findMany({
       where: {
         publishStatus: "published",
+        ...(onlyOpen
+          ? {
+              applicationStatus: "open",
+            }
+          : {}),
         ...(q.length > 0
           ? {
               OR: [

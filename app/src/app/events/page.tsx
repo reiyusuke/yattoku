@@ -52,20 +52,27 @@ export default function EventsPage() {
   const searchParams = useSearchParams();
 
   const initialQuery = searchParams.get("q") ?? "";
+  const initialOnlyOpen = searchParams.get("onlyOpen") === "1";
 
   const [query, setQuery] = useState(initialQuery);
+  const [onlyOpen, setOnlyOpen] = useState(initialOnlyOpen);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadEvents(currentQuery: string) {
+  async function loadEvents(currentQuery: string, currentOnlyOpen: boolean) {
     try {
       setIsLoading(true);
       setError("");
 
       const params = new URLSearchParams();
+
       if (currentQuery.trim()) {
         params.set("q", currentQuery.trim());
+      }
+
+      if (currentOnlyOpen) {
+        params.set("onlyOpen", "1");
       }
 
       const url = params.toString()
@@ -93,24 +100,29 @@ export default function EventsPage() {
   }
 
   useEffect(() => {
-    loadEvents(initialQuery);
-  }, [initialQuery]);
+    loadEvents(initialQuery, initialOnlyOpen);
+  }, [initialOnlyOpen, initialQuery]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmed = query.trim();
+    const params = new URLSearchParams();
 
-    if (trimmed) {
-      router.push(`/events?q=${encodeURIComponent(trimmed)}`);
-      return;
+    if (query.trim()) {
+      params.set("q", query.trim());
     }
 
-    router.push("/events");
+    if (onlyOpen) {
+      params.set("onlyOpen", "1");
+    }
+
+    const queryString = params.toString();
+    router.push(queryString ? `/events?${queryString}` : "/events");
   }
 
   function handleClear() {
     setQuery("");
+    setOnlyOpen(false);
     router.push("/events");
   }
 
@@ -229,14 +241,24 @@ export default function EventsPage() {
         </div>
 
         <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-          <form className="flex flex-col gap-3 md:flex-row" onSubmit={handleSearch}>
+          <form className="flex flex-col gap-4" onSubmit={handleSearch}>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="タイトル・説明・場所で検索"
-              className="flex-1 rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-900"
+              className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-sm outline-none transition focus:border-neutral-900"
             />
+
+            <label className="inline-flex items-center gap-3 text-sm text-neutral-700">
+              <input
+                type="checkbox"
+                checked={onlyOpen}
+                onChange={(e) => setOnlyOpen(e.target.checked)}
+                className="h-4 w-4 rounded border-neutral-300"
+              />
+              募集中のイベントのみ表示する
+            </label>
 
             <div className="flex gap-3">
               <button
