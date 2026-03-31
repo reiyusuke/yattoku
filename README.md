@@ -188,3 +188,10 @@ docker exec -i yattoku-postgres psql -U yattoku -d yattoku_dev -c "SELECT id, us
 - イベント検索 / 絞り込み
 - UI微調整
 - 本番向けのエラーハンドリング改善
+
+## Vercel デプロイメモ
+- GitHub リポジトリ: `reiyusuke/yattoku`
+- Vercel の Root Directory は `app`
+- 本番DBは Vercel Marketplace の Postgres プロバイダ（例: Neon, Supabase, Aurora）を利用
+- `DATABASE_URL` を Production / Preview に設定
+- デプロイ前に Prisma migration を本番DBへ適用する運用を決める
