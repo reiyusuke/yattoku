@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: yattoku-postgres
+    environment:
+      POSTGRES_USER: yattoku
+      POSTGRES_PASSWORD: yattoku_pass
+      POSTGRES_DB: yattoku_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - yattoku_pgdata:/var/lib/postgresql/data
+
+volumes:
+  yattoku_pgdata:

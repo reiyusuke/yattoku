@@ -1,0 +1,28 @@
+# dependencies
+node_modules
+
+# next
+.next
+
+# env
+.env
+.env.local
+app/.env
+app/.env.local
+
+# logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# coverage / build
+coverage
+dist
+
+# prisma generated caches if needed
+.prisma
+
+# misc
+tmp
